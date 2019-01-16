@@ -62,6 +62,8 @@ add_library(modbus
     src/modbus-data.c
     src/modbus-rtu.c
     src/modbus-tcp.c
+    src/modbus-reply.c
+    src/modbus-reply-mapping.c
     src/modbus.c)
 
 target_include_directories(modbus PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
@@ -70,6 +72,9 @@ target_include_directories(modbus INTERFACE
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/modbus>
 )
 set_target_properties(modbus PROPERTIES PUBLIC_HEADER "${MODBUS_PUBLIC_HEADERS}")
+if(WIN32)
+  target_link_libraries(modbus wsock32 ws2_32)
+endif()
 
 if(CMAKE_COMPILER_IS_GNUCC)
     target_compile_options(modbus PRIVATE -D_GNU_SOURCE)

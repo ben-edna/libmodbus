@@ -65,6 +65,8 @@ static const char *names[] = {
 
 int modbus_set_reply_callbacks(modbus_t *ctx, const modbus_reply_callbacks_t *cb, void *user_ctx)
 {
+    printf("Setting callbacks\n");
+
     if (ctx == NULL) {
         errno = EINVAL;
         return -1;
@@ -116,6 +118,13 @@ int modbus_reply_callback(modbus_t *ctx, const uint8_t *req, int req_length)
         errno = EINVAL;
         return -1;
     }
+
+    printf("REQUEST: ");
+    for(int i = 0u; i < req_length; ++i)
+    {
+        printf("%d", req[i]);
+    }
+    printf("\n");
 
     offset = ctx->backend->header_length;
     slave = req[offset - 1];
@@ -225,9 +234,19 @@ int modbus_reply_callback(modbus_t *ctx, const uint8_t *req, int req_length)
         return -1;
         break;
     default:
-        rsp_length = response_exception(
+        printf("bla\n");
+        if(ctx->reply_cb->custom == NULL)
+        { 
+            rsp_length = response_exception(
             ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_FUNCTION, rsp, TRUE,
             "Unknown Modbus function code: 0x%0X\n", function);
+        }
+        else
+        {
+            /* Set to some dummy but correct value */
+            nb = 1;
+            max_nb = 2;
+        }
         break;
     }
 
@@ -377,6 +396,17 @@ int modbus_reply_callback(modbus_t *ctx, const uint8_t *req, int req_length)
             rsp_length += rc;
     } break;
     default:
+        if(ctx->reply_cb->custom) {
+            rsp_length = ctx->backend->build_response_basis(&sft, rsp);
+            rc = ctx->reply_cb->custom(ctx->reply_user_ctx, slave, function,
+                                    address, &rsp[rsp_length], sizeof(rsp) - rsp_length);
+            if (rc <= 0) {
+                rsp_length = 0;
+                goto send_response;
+            }
+
+            rsp_length += rc;
+        }
         break;
     }
 
